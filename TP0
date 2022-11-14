@@ -1,0 +1,91 @@
+from cmu_112_graphics import *
+import math, decimal
+import _tkinter as tk
+#Implement Perspective divide (everything is mapped to 1 point on the screen)
+
+def gameDimensions():
+    winWidth = 500
+    winHeight = 500
+    return winWidth, winHeight
+
+
+def appStarted(app):
+    app.winWidth, app.winHeight = gameDimensions()
+    app.board = [['orange','orange','orange','orange','orange'], 
+                ['orange','white','white','white','orange'],
+                ['orange','white','white','white','orange'],
+                ['orange','white','white','white','orange'],
+                ['orange','orange','orange','orange','orange']]
+    app.mapRows = len(app.board)
+    app.mapCols = len(app.board[0])
+    app.mapMargin = float(app.winHeight*0.3*(1/15))
+    app.sprScaling = 10
+    app.sprXPix = (float(app.winHeight*0.3) - 2*app.mapMargin)/2
+    app.sprYPix = app.sprXPix
+    app.sprCord = (app.sprXPix-app.sprScaling, app.sprYPix-app.sprScaling, app.sprXPix+app.sprScaling, app.sprYPix+app.sprScaling)
+    app.sprPixMov = 3
+    app.firPovColor = 'black'
+
+def drawCell(app, canvas, row, col, color):
+    x0, y0, x1, y1 = getCellBounds(app, row, col)
+    canvas.create_rectangle(x0, y0, x1, y1, fill=color)
+
+def drawBoard(app, canvas):
+    canvas.create_rectangle(0, 0, app.winWidth, app.winHeight, fill=app.firPovColor)
+    for i in range(app.mapRows):
+        for j in range(app.mapCols):
+            canvas.create_rectangle(getCellBounds(app, i, j), fill=app.board[i][j])
+    
+
+
+#https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
+def getCellBounds(app, row, col):
+    gridHeight = float(app.winHeight*0.3) - 2*app.mapMargin
+    gridWidth  = gridHeight 
+    cellWidth = gridWidth / app.mapCols
+    cellHeight = gridHeight / app.mapRows
+    x0 = app.mapMargin + col * cellWidth
+    x1 = app.mapMargin + (col+1) * cellWidth
+    y0 = app.mapMargin + row * cellHeight
+    y1 = app.mapMargin + (row+1) * cellHeight
+    return (x0, y0, x1, y1)
+
+def moveSpr(app, xMove, yMove):
+    if xMove == 1: 
+        app.sprXPix += app.sprPixMov
+    elif xMove == -1: 
+        app.sprXPix -= app.sprPixMov
+    elif yMove == 1: 
+        app.sprYPix -= app.sprPixMov
+    elif yMove == -1: 
+        app.sprYPix += app.sprPixMov
+    (x0, y0, x1, y1) = app.sprCord
+    x0 = app.sprXPix - app.sprScaling
+    y0 = app.sprYPix - app.sprScaling
+    x1 = app.sprXPix + app.sprScaling
+    y1 = app.sprYPix + app.sprScaling
+    app.sprCord = (x0, y0, x1, y1)
+    
+
+def drawSpr(app,canvas):
+    canvas.create_oval(app.sprCord, fill='yellow')
+
+def keyPressed(app, event):
+    if event.key == 'Right':
+        moveSpr(app, 1, 0)
+    if event.key == 'Left':
+        moveSpr(app, -1, 0)
+    if event.key == 'Down':
+        moveSpr(app, 0, -1)
+    if event.key == 'Up':
+        moveSpr(app, 0, 1)
+
+def redrawAll(app, canvas):
+    drawBoard(app, canvas)
+    drawSpr(app, canvas)
+    
+
+def playGame():
+    winWidth, winHeight = gameDimensions()
+    runApp(width=winWidth, height=winHeight)
+playGame()
