@@ -1,0 +1,186 @@
+from cmu_112_graphics import *
+import math, decimal
+import _tkinter as tk
+#Implement Perspective divide (everything is mapped to 1 point on the screen)
+
+def gameDimensions():
+    winWidth = 500
+    winHeight = 500
+    return winWidth, winHeight
+
+def appStarted(app):
+    app.winWidth, app.winHeight = gameDimensions()
+    app.board = [['orange','white','white','white','orange'], 
+                ['white','orange','white','orange','white'],
+                ['white','white','white','white','white'],
+                ['white','orange','white','orange','white'],
+                ['orange','white','white','white','orange']]
+    app.mapRows = len(app.board)
+    app.mapCols = len(app.board[0])
+    app.mapMargin = float(app.winHeight*0.3*(1/15))
+    app.sprScaling = 10
+    app.sprXPix = int((getCellBounds(app, int((app.mapRows+1)/2)-1, int((app.mapCols+1)/2)-1)[0] + 
+        getCellBounds(app, int((app.mapRows+1)/2)-1, int((app.mapCols+1)/2)-1)[2])/2)
+    app.sprYPix = app.sprXPix
+    app.sprCord = (app.sprXPix-app.sprScaling, app.sprYPix-app.sprScaling, app.sprXPix+app.sprScaling, app.sprYPix+app.sprScaling)
+    app.sprPixMov = 3
+    app.firPovColor = 'black'
+    app.counter = 0
+    app.xMove = 0
+    app.yMove = 0
+    app.rotate = 0
+    app.rotateBool = 0
+    app.turnDeg = 2
+    # app.image2 = app.scaleImage(app.image1, 2/3)
+    # app.image2 = app.image2.crop([0, 0, 100, 100])
+    app.spriteScale = 2/3
+    app.spriteSheet = app.scaleImage(app.loadImage('Sprite-Sheet-transformed-PhotoRoom.png'), app.spriteScale)
+    app.spriteWalkDown = Sprite(app, app.spriteSheet, app.spriteScale, app.sprCord[0], app.sprCord[1], 0, 0, 200, 200)
+
+class Sprite:
+    def __init__(app, self, image, scale, x, y, leftCrop, topCrop, rightCrop, botCrop):
+        self.image = image
+        self.leftCrop = leftCrop
+        self.topCrop = topCrop
+        self.rightCrop = rightCrop
+        self.botCrop = botCrop
+        self.scale = scale
+        self.x = x
+        self.y = y
+    
+    def giveImage(self):
+        return self.image
+
+    def giveCropDims(self):
+        return [self.leftCrop, self.topCrop, self.rightCrop, self.botCrop]
+    
+    def giveScale(self):
+        return self.scale
+    
+    def giveImage(self):
+        image = self.image()
+    
+    def spriteRedrawAll(app, canvas, self):
+        canvas.create_image(self.x, self.y, image=ImageTk.PhotoImage(self.crop(self.giveCropDims())))
+
+def timerFired(app):
+    if app.rotateBool == 1:
+        app.rotate -= app.turnDeg
+    elif app.rotateBool == -1:
+        app.rotate += app.turnDeg
+    moveSpr(app)
+
+
+def drawCell(app, canvas, row, col, color):
+    x0, y0, x1, y1 = getCellBounds(app, row, col)
+    canvas.create_rectangle(x0, y0, x1, y1, fill=color)
+
+def drawBoard(app, canvas):
+    canvas.create_rectangle(0, 0, app.winWidth, app.winHeight, fill=app.firPovColor)
+    for i in range(app.mapRows):
+        for j in range(app.mapCols):
+            canvas.create_rectangle(getCellBounds(app, i, j), fill=app.board[i][j])
+
+#https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
+def getCellBounds(app, row, col):
+    gridHeight = app.winHeight - 2*app.mapMargin
+    gridWidth  = gridHeight 
+    cellWidth = gridWidth / app.mapCols
+    cellHeight = gridHeight / app.mapRows
+    x0 = app.mapMargin + col * cellWidth
+    x1 = app.mapMargin + (col+1) * cellWidth
+    y0 = app.mapMargin + row * cellHeight
+    y1 = app.mapMargin + (row+1) * cellHeight
+    return (x0, y0, x1, y1)
+
+def moveSpr(app):
+    #Up, Down, Left, Right
+    if app.xMove == 1:
+        app.sprXPix += app.sprPixMov*math.cos(app.rotate/(2*math.pi))
+        app.sprYPix -= app.sprPixMov*math.sin(app.rotate/(2*math.pi))
+    elif app.xMove == -1:
+        app.sprXPix -= app.sprPixMov*math.cos(app.rotate/(2*math.pi))
+        app.sprYPix += app.sprPixMov*math.sin(app.rotate/(2*math.pi))
+    if app.yMove == 1:
+        app.sprYPix -= app.sprPixMov*math.cos(app.rotate/(2*math.pi))
+        app.sprXPix += app.sprPixMov*math.sin(app.rotate/(2*math.pi))
+    elif app.yMove == -1:
+        app.sprYPix += app.sprPixMov*math.cos(app.rotate/(2*math.pi))
+        app.sprXPix -= app.sprPixMov*math.sin(app.rotate/(2*math.pi))
+    #Body of protagonist
+    (x0, y0, x1, y1) = app.sprCord
+    x0 = app.sprXPix - app.sprScaling
+    y0 = app.sprYPix - app.sprScaling
+    x1 = app.sprXPix + app.sprScaling
+    y1 = app.sprYPix + app.sprScaling
+    app.sprCord = (x0, y0, x1, y1)
+
+# def legalMove(app, xMove, yMove):
+#     if xMove == 1:
+#         app.sprXPix -= app.sprPixMov
+#     elif xMove == -1:
+#         app.sprXPix += app.sprPixMov
+#     elif yMove == 1:
+#         app.sprYPix += app.sprPixMov
+#     elif yMove == -1:
+#         app.sprYPix -= app.sprPixMov
+
+def drawSpr(app,canvas):
+    canvas.create_oval(app.sprCord, fill='yellow')
+
+def keyPressed(app, event):
+    #Up, Down, Left, Right
+    if event.key == 'd':
+        if app.xMove in (0,-1):
+            app.xMove += 1
+        # legalMove(app, 1, 0)
+    if event.key == 'a':
+        if app.xMove in (0,1):
+            app.xMove += -1
+        # legalMove(app, -1, 0)
+    if event.key == 's':
+        if app.yMove in (0,1):
+            app.yMove += -1
+        # legalMove(app, 0, -1)
+    if event.key == 'w':
+        if app.yMove in (-1,0):
+            app.yMove += 1
+        # legalMove(app, 0, 1)
+    #Rotations
+    if event.key == 'Left':
+        if app.rotateBool in (-1,0):
+            app.rotateBool += 1
+    if event.key == 'Right':
+        if app.rotateBool in (0,1):
+            app.rotateBool += -1
+
+def keyReleased(app, event):
+    if event.key == 'd':
+        if app.xMove == 1:
+            app.xMove += -1
+    if event.key == 'a':
+        if app.xMove == -1:
+            app.xMove += 1
+    if event.key == 's':
+        if app.yMove == -1:
+            app.yMove += 1
+    if event.key == 'w':
+        if app.yMove == 1:
+            app.yMove += -1
+    if event.key == 'Left':
+        if app.rotateBool == 1:
+            app.rotateBool += -1
+    if event.key == 'Right':
+        if app.rotateBool == -1:
+            app.rotateBool += 1
+
+def redrawAll(app, canvas):
+    drawBoard(app, canvas)
+    drawSpr(app, canvas)
+    app.spriteWalkDown.spriteRedrawAll(app, canvas)
+
+def playGame():
+    winWidth, winHeight = gameDimensions()
+    runApp(width=winWidth, height=winHeight)
+
+playGame()
