@@ -1,0 +1,402 @@
+from cmu_112_graphics import *
+import math, decimal
+import _tkinter as tk
+import random
+
+def gameDimensions():
+    winWidth = 700
+    winHeight = 700
+    return winWidth, winHeight
+
+def appStarted(app):
+    app.winWidth, app.winHeight = gameDimensions()
+    app.rows = 20
+    app.cols = 20
+    app.depth = 0
+    app.orbCount = 5
+    app.orbsCollected = []
+    app.wallColor = 'black'
+    app.pathColor = 'gray'
+    app.unknownColor = 'yellow'
+    app.mapMargin = float(app.winHeight*0.3*(1/15))
+    app.orbScale = int(abs(getCellBounds(app,0,0)[0]-getCellBounds(app,0,0)[2])/2.3)
+    mazeGen(app)
+    app.sprScaling = int(abs(getCellBounds(app,0,0)[0]-getCellBounds(app,0,0)[2])/2.3)
+    # app.sprXPix = int((getCellBounds(app, int((app.rows+1)/2)-1, int((app.cols+1)/2)-1)[0] + 
+    #     getCellBounds(app, int((app.rows+1)/2)-1, int((app.cols+1)/2)-1)[2])/2)
+    # app.sprYPix = app.sprXPix
+    app.sprCord = (app.sprXPix-app.sprScaling, app.sprYPix-app.sprScaling)
+    app.sprPixMov = 3
+    app.sprPixMovBackup = app.sprPixMov
+    app.sprintMov = 5
+    app.firPovColor = 'black'
+    app.counter = 0
+    app.xMove = 0
+    app.yMove = 0
+    app.rotate = 0
+    app.rotateBool = 0
+    app.turnDeg = 2
+    app.spriteScale = 1/5
+    #Sprite image assets were taken then edited from the game 'Undertale' by Toby Fox
+    app.spriteSheet = app.scaleImage(app.loadImage('Sprite-Sheet-transformed-PhotoRoom.png'), app.spriteScale)
+    app.spriteWalkDown = app.spriteSheet.crop([0,0,30,42])
+    app.spriteWalkRight = app.spriteSheet.crop([30,0,55,42])
+    app.spriteWalkUp = app.spriteSheet.crop([55,0,90,42])
+    app.spriteWalkLeft = app.spriteWalkRight.transpose(Image.FLIP_LEFT_RIGHT)
+    app.spriteStillUp = app.spriteSheet.crop([120,0,160,42])
+    app.spriteStillDown = app.spriteSheet.crop([0,43,30,100])
+    app.spriteStillLeft = app.spriteSheet.crop([90,0,120,42])
+    app.spriteStillRight = app.spriteStillLeft.transpose(Image.FLIP_LEFT_RIGHT)
+    app.defaultSprite = 0
+    app.walkBool = 0
+
+# Written with help from https://medium.com/swlh/fun-with-python-1-maze-generator-931639b4fb7e
+def mazeGen(app):
+    app.board = []
+    for row in range(app.rows): 
+        tempBoard = []
+        for col in range(app.cols): 
+            if row == 0 or row == app.rows-1:
+                tempBoard.append(app.wallColor)
+            elif col == 0 or col == app.cols-1:
+                tempBoard.append(app.wallColor)
+            else:
+                tempBoard.append(app.unknownColor)
+        app.board.append(tempBoard)
+    startRow = int(random.uniform(int(0.4*app.rows), int(0.8*app.rows)))
+    startCol = int(random.uniform(int(0.35*app.cols), int(0.65*app.cols)))
+    app.board[startRow][startCol] = app.pathColor
+    walls = []
+    walls.append([startRow, startCol+1])
+    walls.append([startRow, startCol-1])
+    walls.append([startRow+1, startCol])
+    walls.append([startRow-1, startCol])
+    app.board[startRow][startCol+1] = app.wallColor
+    app.board[startRow][startCol-1] = app.wallColor
+    app.board[startRow+1][startCol] = app.wallColor
+    app.board[startRow-1][startCol] = app.wallColor
+    while walls:
+        app.depth += 1
+        if app.depth > 2000: break
+        randWall = walls[int(random.uniform(0,len(walls))-1)]
+        if randWall[1] != 0:
+            if app.board[randWall[0]][randWall[1]-1] == app.unknownColor and app.board[randWall[0]][randWall[1]+1] == app.pathColor:
+                cells = checkBlanks(app, randWall)
+                if cells < 2:
+                    app.board[randWall[0]][randWall[1]] = app.pathColor
+                    if (randWall[0] != 0):
+                        if (app.board[randWall[0]-1][randWall[1]] != app.pathColor):
+                            app.board[randWall[0]-1][randWall[1]] = app.wallColor
+                        if ([randWall[0]-1, randWall[1]] not in walls):
+                            walls.append([randWall[0]-1, randWall[1]])
+                        if (app.board[randWall[0]+1][randWall[1]] != app.pathColor):
+                            app.board[randWall[0]+1][randWall[1]] = app.wallColor
+                        if ([randWall[0]+1, randWall[1]] not in walls):
+                            walls.append([randWall[0]+1, randWall[1]])
+                        if (app.board[randWall[0]][randWall[1]+1] != app.pathColor):
+                            app.board[randWall[0]][randWall[1]+1] = app.wallColor
+                        if ([randWall[0], randWall[1]+1] not in walls):
+                            walls.append([randWall[0], randWall[1]+1])
+                        if (app.board[randWall[0]][randWall[1]-1] != app.pathColor):
+                            app.board[randWall[0]][randWall[1]-1] = app.wallColor
+                        if ([randWall[0], randWall[1]-1] not in walls):
+                            walls.append([randWall[0], randWall[1]-1])
+                    trashWall(walls, randWall)
+        if randWall[0] != 0:
+            if app.board[randWall[0]-1][randWall[1]] == app.unknownColor and app.board[randWall[0]+1][randWall[1]+1] == app.pathColor:
+                cells = checkBlanks(app, randWall)
+                if cells < 2:
+                    app.board[randWall[0]][randWall[1]] = app.pathColor
+                    if (randWall[0] != 0):
+                        if (app.board[randWall[0]-1][randWall[1]] != app.pathColor):
+                            app.board[randWall[0]-1][randWall[1]] = app.wallColor
+                        if ([randWall[0]-1, randWall[1]] not in walls):
+                            walls.append([randWall[0]-1, randWall[1]])
+                        if (app.board[randWall[0]+1][randWall[1]] != app.pathColor):
+                            app.board[randWall[0]+1][randWall[1]] = app.wallColor
+                        if ([randWall[0]+1, randWall[1]] not in walls):
+                            walls.append([randWall[0]+1, randWall[1]])
+                        if (app.board[randWall[0]][randWall[1]+1] != app.pathColor):
+                            app.board[randWall[0]][randWall[1]+1] = app.wallColor
+                        if ([randWall[0], randWall[1]+1] not in walls):
+                            walls.append([randWall[0], randWall[1]+1])
+                        if (app.board[randWall[0]][randWall[1]-1] != app.pathColor):
+                            app.board[randWall[0]][randWall[1]-1] = app.wallColor
+                        if ([randWall[0], randWall[1]-1] not in walls):
+                            walls.append([randWall[0], randWall[1]-1])
+                    trashWall(walls, randWall)
+        if randWall[0] != app.rows-1:
+            if app.board[randWall[0]+1][randWall[1]] == app.unknownColor and app.board[randWall[0]-1][randWall[1]] == app.pathColor:
+                cells = checkBlanks(app, randWall)
+                if cells < 2:
+                    app.board[randWall[0]][randWall[1]] = app.pathColor
+                    if (randWall[0] != 0):
+                        if (app.board[randWall[0]-1][randWall[1]] != app.pathColor):
+                            app.board[randWall[0]-1][randWall[1]] = app.wallColor
+                        if ([randWall[0]-1, randWall[1]] not in walls):
+                            walls.append([randWall[0]-1, randWall[1]])
+                        if (app.board[randWall[0]+1][randWall[1]] != app.pathColor):
+                            app.board[randWall[0]+1][randWall[1]] = app.wallColor
+                        if ([randWall[0]+1, randWall[1]] not in walls):
+                            walls.append([randWall[0]+1, randWall[1]])
+                        if (app.board[randWall[0]][randWall[1]+1] != app.pathColor):
+                            app.board[randWall[0]][randWall[1]+1] = app.wallColor
+                        if ([randWall[0], randWall[1]+1] not in walls):
+                            walls.append([randWall[0], randWall[1]+1])
+                        if (app.board[randWall[0]][randWall[1]-1] != app.pathColor):
+                            app.board[randWall[0]][randWall[1]-1] = app.wallColor
+                        if ([randWall[0], randWall[1]-1] not in walls):
+                            walls.append([randWall[0], randWall[1]-1])
+                    trashWall(walls, randWall)
+        if randWall[1] != app.cols-1:
+            if app.board[randWall[0]][randWall[1]+1] == app.unknownColor and app.board[randWall[0]][randWall[1]-1] == app.pathColor:
+                cells = checkBlanks(app, randWall)
+                if cells < 2:
+                    app.board[randWall[0]][randWall[1]] = app.pathColor
+                    if (randWall[0] != 0):
+                        if (app.board[randWall[0]-1][randWall[1]] != app.pathColor):
+                            app.board[randWall[0]-1][randWall[1]] = app.wallColor
+                        if ([randWall[0]-1, randWall[1]] not in walls):
+                            walls.append([randWall[0]-1, randWall[1]])
+                        if (app.board[randWall[0]+1][randWall[1]] != app.pathColor):
+                            app.board[randWall[0]+1][randWall[1]] = app.wallColor
+                        if ([randWall[0]+1, randWall[1]] not in walls):
+                            walls.append([randWall[0]+1, randWall[1]])
+                        if (app.board[randWall[0]][randWall[1]+1] != app.pathColor):
+                            app.board[randWall[0]][randWall[1]+1] = app.wallColor
+                        if ([randWall[0], randWall[1]+1] not in walls):
+                            walls.append([randWall[0], randWall[1]+1])
+                        if (app.board[randWall[0]][randWall[1]-1] != app.pathColor):
+                            app.board[randWall[0]][randWall[1]-1] = app.wallColor
+                        if ([randWall[0], randWall[1]-1] not in walls):
+                            walls.append([randWall[0], randWall[1]-1])
+                    trashWall(walls, randWall)
+        continue       
+    for row in range(app.rows):
+        for col in range(app.cols):
+            if app.board[row][col] == app.unknownColor:
+                app.board[row][col] = app.wallColor 
+    spawnOrbs(app)
+    randInt = int(random.uniform(0,len(app.possLocationsCell)-1))
+    coords = getCellBounds(app, app.possLocationsCell[randInt][0], app.possLocationsCell[randInt][1])
+    app.sprXPix = coords[0] + int(abs(getCellBounds(app,0,0)[0]-getCellBounds(app,0,0)[2]))
+    app.sprYPix = coords[1] + int(abs(getCellBounds(app,0,0)[0]-getCellBounds(app,0,0)[2])/2)
+
+    #Help from https://medium.com/swlh/fun-with-python-1-maze-generator-931639b4fb7e
+def checkBlanks(app, randWall):
+    cells = 0
+    if (app.board[randWall[0]-1][randWall[1]] == app.pathColor): cells += 1
+    if (app.board[randWall[0]+1][randWall[1]] == app.pathColor): cells += 1
+    if (app.board[randWall[0]][randWall[1]-1] == app.pathColor): cells += 1
+    if (app.board[randWall[0]][randWall[1]+1] == app.pathColor): cells += 1
+    return cells
+
+#Help from https://medium.com/swlh/fun-with-python-1-maze-generator-931639b4fb7e
+def trashWall(walls, randWall):
+    for wall in walls:
+        if (wall[0] == randWall[0] and wall[1] == randWall[1]):
+            walls.remove(wall)
+
+def everyframe(app):
+    app.walkBool = 1-app.walkBool
+    for orb in app.orbLocations:
+        if abs(app.sprXPix-orb[0]) <= 15 and abs(app.sprYPix-orb[1]) <= 15:
+            app.orbLocations.remove(orb)
+
+def spawnOrbs(app):
+    app.orbLocations = []
+    app.possLocationsXY = []
+    app.possLocationsCell = []
+    for row in range(app.rows):
+        for col in range(app.cols):
+            wallCount = 0
+            if app.board[row][col] == app.pathColor:
+                if app.board[row-1][col] == app.wallColor: wallCount += 1
+                if app.board[row+1][col] == app.wallColor: wallCount += 1
+                if app.board[row][col+1] == app.wallColor: wallCount += 1
+                if app.board[row][col-1] == app.wallColor: wallCount += 1
+                if wallCount == 3: 
+                    location = getCellBounds(app, row, col)
+                    locationCell = (row, col)
+                    app.possLocationsXY.append((location[0]+int(abs(getCellBounds(app,0,0)[0]-getCellBounds(app,0,0)[2])/3.33), 
+                        location[1]+int(abs(getCellBounds(app,0,0)[0]-getCellBounds(app,0,0)[2])/3.33)))
+                    app.possLocationsCell.append(locationCell)
+                    location = 0
+                    locationCell = 0
+    if len(app.possLocationsXY) <= app.orbCount*4:
+        newGen(app)
+    else:
+        for count in range(app.orbCount):
+            randInt = int(random.uniform(0,len(app.possLocationsXY)-1))
+            app.orbLocations.append(app.possLocationsXY[randInt])
+            app.possLocationsXY.pop(randInt)
+            app.possLocationsCell.pop(randInt)
+
+def newGen(app):
+    app.depth = 0
+    app.orbLocations = []
+    app.possLocationsXY = []
+    app.possLocationsCell = []
+    app.orbsCollected = []
+    mazeGen(app)
+
+def timerFired(app):
+    if app.rotateBool == 1:
+        app.rotate -= app.turnDeg
+    elif app.rotateBool == -1:
+        app.rotate += app.turnDeg
+    everyframe(app)
+    moveSpr(app)
+
+def drawCell(app, canvas, row, col, color):
+    x0, y0, x1, y1 = getCellBounds(app, row, col)
+    canvas.create_rectangle(x0, y0, x1, y1, fill=color)
+
+def drawBoard(app, canvas):
+    canvas.create_rectangle(0, 0, app.winWidth, app.winHeight, fill=app.firPovColor)
+    for i in range(app.rows):
+        for j in range(app.cols):
+            canvas.create_rectangle(getCellBounds(app, i, j), fill=app.board[i][j])
+
+#https://www.cs.cmu.edu/~112/notes/notes-animations-part2.html
+def getCellBounds(app, row, col):
+    gridHeight = app.winHeight - 2*app.mapMargin
+    gridWidth  = gridHeight 
+    cellWidth = gridWidth / app.cols
+    cellHeight = gridHeight / app.rows
+    x0 = app.mapMargin + col * cellWidth
+    x1 = app.mapMargin + (col+1) * cellWidth
+    y0 = app.mapMargin + row * cellHeight
+    y1 = app.mapMargin + (row+1) * cellHeight
+    return (x0, y0, x1, y1)
+
+def moveSpr(app):
+    #Up, Down, Left, Right
+    if app.xMove == 1:
+        app.sprXPix += app.sprPixMov*math.cos(app.rotate/(2*math.pi))
+        app.sprYPix -= app.sprPixMov*math.sin(app.rotate/(2*math.pi))
+    elif app.xMove == -1:
+        app.sprXPix -= app.sprPixMov*math.cos(app.rotate/(2*math.pi))
+        app.sprYPix += app.sprPixMov*math.sin(app.rotate/(2*math.pi))
+    if app.yMove == 1:
+        app.sprYPix -= app.sprPixMov*math.cos(app.rotate/(2*math.pi))
+        app.sprXPix += app.sprPixMov*math.sin(app.rotate/(2*math.pi))
+    elif app.yMove == -1:
+        app.sprYPix += app.sprPixMov*math.cos(app.rotate/(2*math.pi))
+        app.sprXPix -= app.sprPixMov*math.sin(app.rotate/(2*math.pi))
+    #Body of protagonist
+    (x, y) = app.sprCord
+    x = app.sprXPix - app.sprScaling
+    y = app.sprYPix - app.sprScaling
+    app.sprCord = (x, y)
+
+# def legalMove(app, xMove, yMove):
+#     if xMove == 1:
+#         app.sprXPix -= app.sprPixMov
+#     elif xMove == -1:
+#         app.sprXPix += app.sprPixMov
+#     elif yMove == 1:
+#         app.sprYPix += app.sprPixMov
+#     elif yMove == -1:
+#         app.sprYPix -= app.sprPixMov
+
+def drawSpr(app,canvas):
+    if app.yMove == -1:
+        if app.walkBool == 0:
+            canvas.create_image(app.sprCord[0],app.sprCord[1]-3,image=ImageTk.PhotoImage(app.spriteWalkDown))
+        else:
+            canvas.create_image(app.sprCord[0],app.sprCord[1]+6,image=ImageTk.PhotoImage(app.spriteStillDown))
+    elif app.yMove == 1:
+        if app.walkBool == 0:
+            canvas.create_image(app.sprCord[0],app.sprCord[1],image=ImageTk.PhotoImage(app.spriteWalkUp))
+        else:
+            canvas.create_image(app.sprCord[0],app.sprCord[1],image=ImageTk.PhotoImage(app.spriteStillUp))
+    elif app.xMove == 1:
+        if app.walkBool == 0:
+            canvas.create_image(app.sprCord[0],app.sprCord[1],image=ImageTk.PhotoImage(app.spriteWalkRight))
+        else:
+            canvas.create_image(app.sprCord[0],app.sprCord[1],image=ImageTk.PhotoImage(app.spriteStillRight))
+    elif app.xMove == -1:
+        if app.walkBool == 0:
+            canvas.create_image(app.sprCord[0],app.sprCord[1],image=ImageTk.PhotoImage(app.spriteWalkLeft))
+        else:
+            canvas.create_image(app.sprCord[0],app.sprCord[1],image=ImageTk.PhotoImage(app.spriteStillLeft))
+    else: 
+        if app.defaultSprite == 0:
+            canvas.create_image(app.sprCord[0],app.sprCord[1]+6,image=ImageTk.PhotoImage(app.spriteStillDown))
+        elif app.defaultSprite == 1:
+            canvas.create_image(app.sprCord[0],app.sprCord[1],image=ImageTk.PhotoImage(app.spriteStillUp))
+        elif app.defaultSprite == 2:
+            canvas.create_image(app.sprCord[0],app.sprCord[1],image=ImageTk.PhotoImage(app.spriteStillRight))
+        elif app.defaultSprite == 3:
+            canvas.create_image(app.sprCord[0],app.sprCord[1],image=ImageTk.PhotoImage(app.spriteStillLeft))
+
+def drawOrb(app,canvas):
+    for cord in app.orbLocations:
+        if cord not in app.orbsCollected:
+            canvas.create_oval(cord[0],cord[1], cord[0]+app.orbScale, cord[1]+app.orbScale, fill='spring green')
+
+def keyPressed(app, event):
+    #Up, Down, Left, Right
+    if event.key == 'd':
+        if app.xMove in (0,-1):
+            app.xMove += 1
+        # legalMove(app, 1, 0)
+    if event.key == 'a':
+        if app.xMove in (0,1):
+            app.xMove += -1
+        # legalMove(app, -1, 0)
+    if event.key == 's':
+        if app.yMove in (0,1):
+            app.yMove += -1
+        # legalMove(app, 0, -1)
+    if event.key == 'w':
+        if app.yMove in (-1,0):
+            app.yMove += 1
+        # legalMove(app, 0, 1)
+    if event.key == 'Space':
+        app.sprPixMov = app.sprintMov
+    #Rotations
+    # if event.key == 'Left': 
+    #     if app.rotateBool in (-1,0):
+    #         app.rotateBool += 1
+    if event.key == 'n':
+        newGen(app)
+        
+
+def keyReleased(app, event):
+    if event.key == 'd':
+        if app.xMove == 1:
+            app.xMove += -1
+        app.defaultSprite = 2
+    if event.key == 'a':
+        if app.xMove == -1:
+            app.xMove += 1
+        app.defaultSprite = 3
+    if event.key == 's':
+        if app.yMove == -1:
+            app.yMove += 1
+        app.defaultSprite = 0
+    if event.key == 'w':
+        if app.yMove == 1:
+            app.yMove += -1
+        app.defaultSprite = 1
+    if event.key == 'Left':
+        if app.rotateBool == 1:
+            app.rotateBool += -1
+    if event.key == 'Right':
+        if app.rotateBool == -1:
+            app.rotateBool += 1
+    if event.key == 'Space':
+        app.sprPixMov = app.sprPixMovBackup
+
+def redrawAll(app, canvas):
+    drawBoard(app, canvas)
+    drawSpr(app, canvas)
+    drawOrb(app, canvas)
+
+def playGame():
+    winWidth, winHeight = gameDimensions()
+    runApp(width=winWidth, height=winHeight)
+
+playGame()
