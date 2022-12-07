@@ -691,8 +691,8 @@ def drawInstructions(app, canvas):
     canvas.create_text(350, 75, text="WASD: Move - Space: Sprint - E: Lights ON\n                       don't get caught...", fill="white", font=('Times', 20, 'bold', 'italic'))
 
 def drawSprint(app, canvas):
-    canvas.create_text(580, 650, text=f"Stamina:", fill="white", font=('Times', 16, 'bold'))
-    canvas.create_text(640, 650, text=f"{int((app.stamina/app.maxStamina)*100)}", fill="white", font=('Times', 16, 'bold'))
+    canvas.create_text(580, 650, text=f"Stamina:\nLights:", fill="white", font=('Times', 16, 'bold'))
+    canvas.create_text(640, 650, text=f"{int((app.stamina/app.maxStamina)*100)}\n{100-int((app.playerLights/60)*100)}", fill="white", font=('Times', 16, 'bold'))
 
 def keyPressed(app, event):
     if app.caught == True: 
